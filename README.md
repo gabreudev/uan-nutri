@@ -4,13 +4,15 @@ Sistema web para gestão de estabelecimentos e avaliações temporais da **Lista
 
 ---
 
-## 🚀 Como Executar
+## 🚀 Acesso e Demonstração Online
 
-O servidor local está em execução na porta `3000`. Você pode abrir o sistema no seu navegador acessando:
+O sistema está publicado e acessível diretamente no GitHub Pages:
 
-👉 **[http://localhost:3000](http://localhost:3000)**
+👉 **[https://gabreudev.github.io/uan-nutri/](https://gabreudev.github.io/uan-nutri/)**
 
-*(Ou dê dois cliques no arquivo `index.html` para abrir diretamente em qualquer navegador moderno, ou publique no GitHub Pages sem nenhuma etapa de build).*
+### Execução Local
+Se preferir executar localmente, o servidor está na porta `3000`:
+👉 **[http://localhost:3000](http://localhost:3000)** *(ou abra diretamente o arquivo `index.html` em qualquer navegador moderno)*.
 
 ---
 
