@@ -44,6 +44,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Garantia absoluta de visibilidade para evitar que modais ocultos interceptem cliques */
+.hidden {
+  display: none !important;
+}
+
 /* Números tabulares para precisão de auditoria e tabelas */
 .tabular-nums, code, .font-mono, .stat-value {
   font-family: var(--font-mono);

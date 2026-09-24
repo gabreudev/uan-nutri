@@ -1,6 +1,6 @@
-# BPF Digital • Lista de Verificação de Boas Práticas (RDC 275/2002 - UAN)
+# BPF Digital • Gestão e Avaliação de UAN (RDC 275/2002)
 
-Sistema web interativo para digitalização, gestão por estabelecimento e cálculo estatístico da **Lista de Verificação das Boas Práticas de Fabricação em Estabelecimentos Produtores/Industrializadores de Alimentos (Resolução ANVISA RDC nº 275/2002)**, adaptada para auditorias e pesquisas em **Unidades de Alimentação e Nutrição (UAN)**.
+Sistema web para gestão de estabelecimentos e avaliações temporais da **Lista de Verificação das Boas Práticas de Fabricação em Estabelecimentos Produtores/Industrializadores de Alimentos (Resolução ANVISA RDC nº 275/2002)**, adaptada para auditorias e pesquisas em **Unidades de Alimentação e Nutrição (UAN)**.
 
 ---
 
@@ -10,57 +10,68 @@ O servidor local está em execução na porta `3000`. Você pode abrir o sistema
 
 👉 **[http://localhost:3000](http://localhost:3000)**
 
-*(Ou dê dois cliques no arquivo `index.html` para abrir diretamente em qualquer navegador moderno).*
+*(Ou dê dois cliques no arquivo `index.html` para abrir diretamente em qualquer navegador moderno, ou publique no GitHub Pages sem nenhuma etapa de build).*
 
 ---
 
-## 🧭 Novo Fluxo de Navegação (Hub de Análises)
+## 🏛️ Nova Estrutura Hierárquica: Lugares $\rightarrow$ Múltiplas Avaliações
 
-Para suportar múltiplas avaliações sem sobrecarregar a tela com todas as tabelas juntas, o sistema adota uma arquitetura em 3 etapas:
+Na rotina profissional de consultoria e auditoria em UAN, uma unidade nunca recebe apenas uma visita estática. O ciclo preconizado pela vigilância sanitária é composto por **Diagnóstico Inicial**, **Implantação de Ações Corretivas** e **Reavaliações de Eficácia**.
+
+O sistema reflete essa realidade em 4 níveis integrados:
 
 ```
-[ Hub de Análises ]  ──( Escolher uma análise )──►  [ Ambiente de Trabalho da UAN ]
-        │                                                     │
-        │                                                     ▼
-        └──( Selecionar múltiplas )──────────────►  [ Matriz Comparativa da Pesquisa ]
+[ 1. Hub de Lugares (UANs) ]
+        │
+        ├── Escolher um Lugar (ex: Hospital Universitário)
+        │       ▼
+        ├── [ 2. Linha do Tempo de Avaliações do Lugar ]
+        │       ├── Avaliação 1: 10/03/2026 (Diagnóstico Inicial)  ──► 78,5% (G1)
+        │       └── Avaliação 2: 15/04/2026 (Pós-Ações Corretivas) ──► 95,4% (G1) ↗ +16,9%
+        │               │
+        │               ├── Abrir Checklist
+        │               ▼
+        │       [ 3. Ambiente de Checklist e Diagnóstico (164 itens) ]
+        │
+        └── Comparar
+                ▼
+        [ 4. Matriz Comparativa ]
+                ├── Comparação Temporal (Antes vs. Depois no mesmo lugar)
+                └── Benchmarking (Confronto entre lugares distintos)
 ```
-
-### 1. Painel de Análises (Tela Inicial / Hub)
-- Lista todas as auditorias cadastradas em cards com informações de identificação:
-  - Sigla/Código (`UAN A`, `UAN B`), Razão Social e Segmento.
-  - Data da avaliação e Responsável Técnico / Avaliador.
-  - Placar direto de Adequação (`%`), itens não conformes e Classificação Oficial ANVISA (`Grupo 1`, `2` ou `3`).
-  - Barra de progresso de preenchimento (`X/164`).
-- **Ações disponíveis**:
-  - **Analisar / Ver Checklist**: Abre o ambiente de trabalho dedicado àquela análise.
-  - **Nova Análise**: Cadastra um novo estabelecimento para verificação do zero.
-  - **Comparar Selecionadas**: Marque 2 ou mais análises com as caixas de seleção para abrir o confronto direto.
-  - **Ações rápidas**: Editar dados, Duplicar (para reavaliações) e Excluir.
-
-### 2. Ambiente de Trabalho da Análise Selecionada
-- Foco total na inspeção do local ativo:
-  - Botão de retorno rápido: `← Voltar para lista de análises`.
-  - Scorecard de conformidade (`Adequação Geral`, `Fora do Padrão`, `Grupo ANVISA`, `Progresso`).
-  - Painel com os **7 Blocos da RDC 275**: clique em qualquer bloco para filtrar instantaneamente as questões correspondentes.
-  - **Checklist interativo de 164 itens**: botões táteis `SIM`, `NÃO`, `NA`, campo para anotações/evidências e filtro por status.
-  - **Relatório Oficial para Impressão**: Formatação ABNT/ANVISA com campos de assinatura para RT e auditor.
-
-### 3. Matriz Comparativa (Tabela da Pesquisa)
-- Permite comparar lado a lado o desempenho por bloco de estabelecimentos selecionados.
-- Filtro por checkboxes para escolher exatamente quais UANs compõem a tabela.
-- Botões de **Copiar Tabela** (formato compatível com Word e Excel) e **Exportar CSV**.
-- Linha de rodapé com fonte de pesquisa editável.
 
 ---
 
-## 📐 Fórmulas Sanitárias Oficiais (RDC 275/2002)
+### 1. Hub de Lugares (Tela Inicial)
+- Lista todos os estabelecimentos cadastrados (UAN A, UAN B, etc.).
+- Cada card exibe:
+  - Sigla/Código, Nome do Estabelecimento, Categoria e RT.
+  - Total de avaliações realizadas no local.
+  - Data e nota da avaliação mais recente com badge oficial da ANVISA.
+  - **Indicador de evolução temporal automática**: se houver mais de uma inspeção, exibe o ganho percentual (ex: `↗ +16,9% de evolução`).
+- Botão **`+ Novo Lugar`** para cadastrar novos estabelecimentos.
+- Botão **`Ver Histórico`** para abrir as avaliações daquele local.
 
-- **Itens Válidos**: $\text{SIM} + \text{NÃO}$ *(itens NA são excluídos do denominador)*
-- **Porcentagem de Adequação**:
-  $$\% \text{ Adequação} = \left(\frac{\text{SIM}}{\text{SIM} + \text{NÃO}}\right) \times 100$$
-- **Porcentagem Fora do Padrão**:
-  $$\% \text{ Fora do Padrão} = \left(\frac{\text{NÃO}}{\text{SIM} + \text{NÃO}}\right) \times 100$$
-- **Classificação ANVISA**:
-  - **Grupo 1**: 76% a 100% de adequação
-  - **Grupo 2**: 51% a 75% de adequação
-  - **Grupo 3**: 0% a 50% de adequação
+### 2. Histórico & Linha do Tempo do Lugar
+- Visão focada exclusivamente no estabelecimento selecionado.
+- Exibe o histórico de inspeções cronológicas (da mais recente para a mais antiga).
+- Botão **`+ Nova Avaliação neste Lugar`**:
+  - Permite criar uma nova inspeção do zero ou marcar a opção **"Copiar respostas da avaliação anterior"** (economiza tempo do auditor para registrar apenas o que foi alterado).
+- Botão **`Comparar Evolução deste Lugar`**: confronta lado a lado as avaliações daquele local na tabela por blocos.
+
+### 3. Ambiente de Checklist da Avaliação Ativa
+- Breadcrumb de retorno rápido para o histórico do lugar.
+- Scorecard com fórmulas oficiais da ANVISA:
+  - **Itens Válidos**: $\text{SIM} + \text{NÃO}$ *(itens NA são excluídos)*
+  - **Adequação Geral**: $\left(\frac{\text{SIM}}{\text{SIM} + \text{NÃO}}\right) \times 100$
+  - **Classificação**: Grupo 1 (76-100%), Grupo 2 (51-75%), Grupo 3 (0-50%)
+- Painel interativo com os **7 Blocos da RDC 275**: clicar em um bloco filtra o checklist.
+- Checklist de **164 itens oficiais** com botões táteis `SIM`, `NÃO`, `NA` e registro de evidências/anotações.
+- Botão de **Imprimir Relatório** formatado nos padrões ABNT/ANVISA com campos para assinatura do RT e do auditor.
+
+### 4. Matriz Comparativa (Tabela da Pesquisa)
+- Permite comparar:
+  - **Evolução temporal do mesmo local** (ex: *UAN A Diagnóstico vs. UAN A Reavaliação*).
+  - **Benchmarking entre locais diferentes** (ex: *UAN A vs. UAN B*).
+  - Qualquer combinação arbitrária de avaliações selecionadas via caixas de seleção.
+- Botões de **Copiar Tabela** (TSV compatível com Word/Excel) e **Exportar CSV**.
