@@ -19,7 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
     checklistSearchQuery: '',
 
     // Comparações Selecionadas
-    comparedEvalIds: new Set()
+    comparedEvalIds: new Set(),
+
+    // Visualização Gráfica da Avaliação
+    activeChartType: 'bar', // 'bar' | 'radar' | 'donut' | 'evolution'
+    isChartCollapsed: false
   };
 
   // Mapeamento DOM
@@ -86,6 +90,13 @@ document.addEventListener('DOMContentLoaded', () => {
     evalNaCount: document.getElementById('evalNaCount'),
     evalPendingCount: document.getElementById('evalPendingCount'),
     evalBlockCardsGrid: document.getElementById('evalBlockCardsGrid'),
+    chartContainerBody: document.getElementById('chartContainerBody'),
+    evalChartCanvas: document.getElementById('evalChartCanvas'),
+    btnToggleChartCollapse: document.getElementById('btnToggleChartCollapse'),
+    iconChartCollapse: document.getElementById('iconChartCollapse'),
+    textChartCollapse: document.getElementById('textChartCollapse'),
+    chartInsightsFooter: document.getElementById('chartInsightsFooter'),
+    btnChartEvolution: document.getElementById('btnChartEvolution'),
     filteredItemsCount: document.getElementById('filteredItemsCount'),
     searchInput: document.getElementById('searchInput'),
     blockTabsContainer: document.getElementById('blockTabsContainer'),
@@ -174,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let isNavigating = false;
+  let evalChartInstance = null;
 
   /**
    * Roteamento baseado em hash (#places, #place/:id, #eval/:id, #compare)
@@ -684,6 +696,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 7 Blocos
     renderEvalBlocksGrid(stats);
 
+    // Painel Gráfico Interativo
+    renderEvalChart(stats, place, evaluation);
+
     // Checklist
     renderChecklist(evaluation.answers || {});
   }
@@ -741,6 +756,439 @@ document.addEventListener('DOMContentLoaded', () => {
 
       dom.evalBlockCardsGrid.appendChild(card);
     });
+  }
+
+  // ==========================================================================
+  // PAINEL GRÁFICO INTERATIVO DA AVALIAÇÃO
+  // ==========================================================================
+
+  function renderEvalChart(stats, place, currentEval) {
+    if (!dom.evalChartCanvas) return;
+    if (typeof Chart === 'undefined') {
+      console.warn('Chart.js ainda não disponível.');
+      return;
+    }
+
+    // Se estiver recolhido, oculta corpo do gráfico
+    if (state.isChartCollapsed) {
+      dom.chartContainerBody.classList.add('hidden');
+      dom.iconChartCollapse.className = 'fa-solid fa-chevron-down text-[10px]';
+      dom.textChartCollapse.textContent = 'Expandir';
+    } else {
+      dom.chartContainerBody.classList.remove('hidden');
+      dom.iconChartCollapse.className = 'fa-solid fa-chevron-up text-[10px]';
+      dom.textChartCollapse.textContent = 'Recolher';
+    }
+
+    // Configura botão de evolução temporal: só habilitado se a UAN possuir 2+ avaliações
+    const evals = place?.evaluations || [];
+    const hasMultipleEvals = evals.length >= 2;
+    if (dom.btnChartEvolution) {
+      if (!hasMultipleEvals) {
+        dom.btnChartEvolution.disabled = true;
+        dom.btnChartEvolution.classList.add('opacity-40', 'cursor-not-allowed');
+        dom.btnChartEvolution.title = 'Requer ao menos 2 avaliações nesta UAN para traçar evolução temporal';
+        if (state.activeChartType === 'evolution') {
+          state.activeChartType = 'bar';
+        }
+      } else {
+        dom.btnChartEvolution.disabled = false;
+        dom.btnChartEvolution.classList.remove('opacity-40', 'cursor-not-allowed');
+        dom.btnChartEvolution.title = 'Linha de Evolução Temporal neste Estabelecimento';
+      }
+    }
+
+    // Atualiza classes ativas dos botões do tipo de gráfico
+    document.querySelectorAll('.btn-chart-type').forEach(btn => {
+      const type = btn.getAttribute('data-chart');
+      if (type === state.activeChartType) {
+        btn.className = 'btn-chart-type px-2.5 py-1 rounded font-bold transition active bg-slate-900 text-white';
+      } else {
+        btn.className = 'btn-chart-type px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition';
+      }
+    });
+
+    // Se o container estiver recolhido, não precisamos desenhar o canvas agora
+    if (state.isChartCollapsed) {
+      renderChartInsightsFooter(stats);
+      return;
+    }
+
+    // Destrói instância anterior para evitar sobreposição ou vazamento de memória
+    if (evalChartInstance) {
+      evalChartInstance.destroy();
+      evalChartInstance = null;
+    }
+
+    const ctx = dom.evalChartCanvas.getContext('2d');
+
+    // Configurações globais de tipografia
+    Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+    Chart.defaults.color = '#475569';
+
+    let chartConfig = null;
+
+    if (state.activeChartType === 'bar') {
+      const labels = UAN_CATEGORIES.map(c => c.shortName);
+      const values = UAN_CATEGORIES.map(c => {
+        const catStat = stats.categoryStats[c.name];
+        return catStat ? parseFloat(catStat.adequacyPct.toFixed(1)) : 0;
+      });
+
+      // Cores por grupo da ANVISA: >=76% Verde (G1), 51-75% Âmbar (G2), <51% Vermelho (G3)
+      const bgColors = values.map(v => {
+        if (v >= 76) return '#059669'; // Emerald
+        if (v >= 51) return '#d97706'; // Amber
+        return '#e11d48'; // Rose
+      });
+
+      const borderColors = values.map(v => {
+        if (v >= 76) return '#047857';
+        if (v >= 51) return '#b45309';
+        return '#be123c';
+      });
+
+      chartConfig = {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Adequação (%)',
+            data: values,
+            backgroundColor: bgColors,
+            borderColor: borderColors,
+            borderWidth: 1.5,
+            borderRadius: 6,
+            barThickness: 28,
+            maxBarThickness: 38
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleFont: { size: 12, weight: 'bold' },
+              bodyFont: { size: 12 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function(context) {
+                  const val = context.parsed.y;
+                  let grp = 'G3 - Ruim (0-50%)';
+                  if (val >= 76) grp = 'G1 - Bom (76-100%)';
+                  else if (val >= 51) grp = 'G2 - Regular (51-75%)';
+                  return [` Adequação: ${val.toFixed(1)}%`, ` Classificação: ${grp}`];
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: (val) => `${val}%`,
+                stepSize: 25,
+                font: { size: 11, family: "'JetBrains Mono', monospace" }
+              },
+              grid: { color: '#f1f5f9' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: {
+                font: { size: 11, weight: '600' }
+              }
+            }
+          }
+        }
+      };
+    } else if (state.activeChartType === 'radar') {
+      const labels = UAN_CATEGORIES.map(c => c.shortName);
+      const values = UAN_CATEGORIES.map(c => {
+        const catStat = stats.categoryStats[c.name];
+        return catStat ? parseFloat(catStat.adequacyPct.toFixed(1)) : 0;
+      });
+
+      chartConfig = {
+        type: 'radar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Adequação Atual da UAN (%)',
+              data: values,
+              backgroundColor: 'rgba(5, 150, 105, 0.22)',
+              borderColor: '#059669',
+              borderWidth: 2,
+              pointBackgroundColor: '#059669',
+              pointBorderColor: '#ffffff',
+              pointHoverRadius: 6,
+              pointRadius: 4
+            },
+            {
+              label: 'Meta Mínima Grupo 1 (76%)',
+              data: Array(labels.length).fill(76),
+              borderColor: 'rgba(16, 185, 129, 0.65)',
+              borderWidth: 1.5,
+              borderDash: [5, 4],
+              backgroundColor: 'transparent',
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 14,
+                font: { size: 11, weight: 'bold' }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              cornerRadius: 8,
+              padding: 10,
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw}%`
+              }
+            }
+          },
+          scales: {
+            r: {
+              min: 0,
+              max: 100,
+              ticks: {
+                stepSize: 25,
+                callback: (val) => `${val}%`,
+                backdropColor: 'transparent',
+                font: { size: 10, family: "'JetBrains Mono', monospace" }
+              },
+              grid: { color: '#e2e8f0' },
+              angleLines: { color: '#e2e8f0' },
+              pointLabels: {
+                font: { size: 11, weight: '600' },
+                color: '#1e293b'
+              }
+            }
+          }
+        }
+      };
+    } else if (state.activeChartType === 'donut') {
+      const labels = ['SIM (Conforme)', 'NÃO (Não Conforme)', 'NA (Não Aplicável)', 'Pendente'];
+      const dataValues = [stats.sim, stats.nao, stats.na, stats.pending];
+      const total = stats.totalItems;
+
+      chartConfig = {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data: dataValues,
+            backgroundColor: [
+              '#059669', // Verde SIM
+              '#e11d48', // Vermelho NÃO
+              '#64748b', // Slate NA
+              '#cbd5e1'  // Cinza Pendente
+            ],
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            hoverOffset: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '66%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                boxWidth: 14,
+                font: { size: 12, weight: '600' },
+                padding: 12,
+                generateLabels: function(chart) {
+                  const data = chart.data;
+                  if (data.labels.length && data.datasets.length) {
+                    return data.labels.map((label, i) => {
+                      const val = data.datasets[0].data[i];
+                      const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                      return {
+                        text: `${label}: ${val} (${pct}%)`,
+                        fillStyle: data.datasets[0].backgroundColor[i],
+                        hidden: false,
+                        index: i
+                      };
+                    });
+                  }
+                  return [];
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              cornerRadius: 8,
+              padding: 10,
+              callbacks: {
+                label: function(ctx) {
+                  const val = ctx.raw;
+                  const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                  return ` ${ctx.label}: ${val} itens (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      };
+    } else if (state.activeChartType === 'evolution') {
+      const sortedEvals = [...(place?.evaluations || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
+      const labels = sortedEvals.map(e => {
+        const dStr = e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+        return `${e.title} (${dStr})`;
+      });
+
+      const dataValues = sortedEvals.map(e => {
+        const s = Calculator.calculate(e.answers || {});
+        return parseFloat(s.adequacyPct.toFixed(1));
+      });
+
+      const pointColors = dataValues.map(v => {
+        if (v >= 76) return '#059669';
+        if (v >= 51) return '#d97706';
+        return '#e11d48';
+      });
+
+      chartConfig = {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Adequação da UAN (%)',
+              data: dataValues,
+              borderColor: '#059669',
+              backgroundColor: 'rgba(5, 150, 105, 0.12)',
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.25,
+              pointBackgroundColor: pointColors,
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 2,
+              pointRadius: 6,
+              pointHoverRadius: 8
+            },
+            {
+              label: 'Meta Grupo 1 (76%)',
+              data: Array(labels.length).fill(76),
+              borderColor: 'rgba(16, 185, 129, 0.7)',
+              borderWidth: 1.5,
+              borderDash: [5, 4],
+              backgroundColor: 'transparent',
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 14,
+                font: { size: 11, weight: 'bold' }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              cornerRadius: 8,
+              padding: 10,
+              callbacks: {
+                label: function(ctx) {
+                  return ` ${ctx.dataset.label}: ${ctx.raw}%`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              ticks: {
+                stepSize: 20,
+                callback: (val) => `${val}%`,
+                font: { size: 11, family: "'JetBrains Mono', monospace" }
+              },
+              grid: { color: '#f1f5f9' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 11, weight: '600' } }
+            }
+          }
+        }
+      };
+    }
+
+    if (chartConfig) {
+      evalChartInstance = new Chart(ctx, chartConfig);
+    }
+
+    renderChartInsightsFooter(stats);
+  }
+
+  function renderChartInsightsFooter(stats) {
+    if (!dom.chartInsightsFooter) return;
+
+    const blockEntries = Object.entries(stats.categoryStats || {});
+    if (blockEntries.length === 0) {
+      dom.chartInsightsFooter.innerHTML = '';
+      return;
+    }
+
+    let minBlock = null;
+    let maxBlock = null;
+
+    blockEntries.forEach(([name, b]) => {
+      if (!minBlock || b.adequacyPct < minBlock.adequacyPct) {
+        minBlock = b;
+      }
+      if (!maxBlock || b.adequacyPct > maxBlock.adequacyPct) {
+        maxBlock = b;
+      }
+    });
+
+    let insightHtml = '';
+    if (minBlock && minBlock.adequacyPct < 76) {
+      insightHtml += `
+        <div class="flex items-center gap-1.5 text-rose-700 font-medium">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span><strong>Atenção Corretiva:</strong> "${minBlock.shortName || minBlock.name}" está com ${Calculator.formatPct(minBlock.adequacyPct)} (${minBlock.nao} itens não conformes).</span>
+        </div>
+      `;
+    } else {
+      insightHtml += `
+        <div class="flex items-center gap-1.5 text-emerald-700 font-medium">
+          <i class="fa-solid fa-circle-check"></i>
+          <span><strong>Excelente Conformidade:</strong> Todos os 7 blocos atendem ao patamar do Grupo 1 (≥76%).</span>
+        </div>
+      `;
+    }
+
+    if (maxBlock && maxBlock.name !== minBlock?.name) {
+      insightHtml += `
+        <div class="text-slate-500 font-medium mt-1 sm:mt-0">
+          <span><i class="fa-solid fa-star text-amber-500 mr-1"></i>Maior índice: <strong>${maxBlock.shortName || maxBlock.name}</strong> (${Calculator.formatPct(maxBlock.adequacyPct)})</span>
+        </div>
+      `;
+    }
+
+    dom.chartInsightsFooter.innerHTML = insightHtml;
   }
 
   function renderChecklistBlockTabs() {
@@ -891,6 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
           dom.evalPendingCount.textContent = `${stats.pending} pendentes`;
 
           renderEvalBlocksGrid(stats);
+          renderEvalChart(stats, found.place, found.evaluation);
           updateSingleItemButtons(id, found.evaluation.answers);
         }
       });
@@ -1325,6 +1774,31 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(`${ids.length} itens marcados como SIM!`);
       }
     });
+
+    // Alternar Tipo de Gráfico (Barras / Radar / Rosca / Evolução)
+    document.querySelectorAll('.btn-chart-type').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const type = e.currentTarget.getAttribute('data-chart');
+        state.activeChartType = type;
+        const found = Store.getEvaluation(state.activeEvalId);
+        if (found) {
+          const stats = Calculator.calculate(found.evaluation.answers || {});
+          renderEvalChart(stats, found.place, found.evaluation);
+        }
+      });
+    });
+
+    // Recolher / Expandir Painel Gráfico
+    if (dom.btnToggleChartCollapse) {
+      dom.btnToggleChartCollapse.addEventListener('click', () => {
+        state.isChartCollapsed = !state.isChartCollapsed;
+        const found = Store.getEvaluation(state.activeEvalId);
+        if (found) {
+          const stats = Calculator.calculate(found.evaluation.answers || {});
+          renderEvalChart(stats, found.place, found.evaluation);
+        }
+      });
+    }
 
     // Copiar Tabela & Exportar CSV
     dom.btnCopyTable.addEventListener('click', async () => {

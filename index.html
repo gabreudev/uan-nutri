@@ -31,7 +31,11 @@
 
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="css/custom.css?v=2.4">
+  
+  <!-- Chart.js 4.4 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="css/custom.css?v=2.5">
 </head>
 <body class="min-h-full flex flex-col text-slate-800 antialiased bg-slate-50">
 
@@ -329,6 +333,50 @@
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- Painel Gráfico Interativo da Avaliação (Escolha do Usuário) -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide">
+              Análise Visual da Avaliação
+            </h3>
+            <span class="text-[11px] text-slate-400 font-medium hidden sm:inline">• RDC 275/2002</span>
+          </div>
+
+          <!-- Seletor de Tipo de Gráfico -->
+          <div class="flex flex-wrap items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 text-xs shadow-2xs" id="chartTypeButtonsContainer">
+            <button type="button" class="btn-chart-type px-2.5 py-1 rounded font-bold transition active bg-slate-900 text-white" data-chart="bar" title="Gráfico de Barras de Conformidade por Bloco">
+              <i class="fa-solid fa-chart-column mr-1"></i><span>Barras por Bloco</span>
+            </button>
+            <button type="button" class="btn-chart-type px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" data-chart="radar" title="Perfil Sanitário Multidimensional (Radar / Teia)">
+              <i class="fa-solid fa-chart-pie mr-1"></i><span>Radar Sanitário</span>
+            </button>
+            <button type="button" class="btn-chart-type px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" data-chart="donut" title="Distribuição Geral SIM, NÃO e NA">
+              <i class="fa-solid fa-circle-notch mr-1"></i><span>Rosca Geral</span>
+            </button>
+            <button type="button" id="btnChartEvolution" class="btn-chart-type px-2.5 py-1 rounded font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition" data-chart="evolution" title="Linha de Evolução Temporal neste Estabelecimento">
+              <i class="fa-solid fa-chart-line mr-1"></i><span>Evolução da UAN</span>
+            </button>
+          </div>
+
+          <!-- Botão Ocultar/Recolher -->
+          <button type="button" id="btnToggleChartCollapse" class="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1.5 font-medium px-2 py-1 rounded hover:bg-slate-100 transition">
+            <i class="fa-solid fa-chevron-up text-[10px]" id="iconChartCollapse"></i>
+            <span id="textChartCollapse">Recolher</span>
+          </button>
+        </div>
+
+        <div id="chartContainerBody" class="p-4 transition-all">
+          <div class="chart-container-wrapper relative w-full h-72 sm:h-80 flex items-center justify-center">
+            <canvas id="evalChartCanvas"></canvas>
+          </div>
+          <div id="chartInsightsFooter" class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500">
+            <!-- Preenchido dinamicamente via JS -->
+          </div>
         </div>
       </div>
 
@@ -723,10 +771,10 @@
   </div>
 
   <!-- Scripts com Cache-Busting -->
-  <script src="js/questions.js?v=2.4"></script>
-  <script src="js/defaults.js?v=2.4"></script>
-  <script src="js/calculator.js?v=2.4"></script>
-  <script src="js/store.js?v=2.4"></script>
-  <script src="js/app.js?v=2.4"></script>
+  <script src="js/questions.js?v=2.5"></script>
+  <script src="js/defaults.js?v=2.5"></script>
+  <script src="js/calculator.js?v=2.5"></script>
+  <script src="js/store.js?v=2.5"></script>
+  <script src="js/app.js?v=2.5"></script>
 </body>
 </html>
