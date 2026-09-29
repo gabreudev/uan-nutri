@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     comparedEvalIds: new Set(),
 
     // Visualização Gráfica da Avaliação
-    activeChartType: 'bar', // 'bar' | 'radar' | 'donut' | 'evolution'
+    activeChartType: 'bar', // 'bar' | 'radar' | 'pie' | 'evolution'
     isChartCollapsed: false
   };
 
@@ -979,13 +979,13 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
       };
-    } else if (state.activeChartType === 'donut') {
+    } else if (state.activeChartType === 'pie' || state.activeChartType === 'donut') {
       const labels = ['SIM (Conforme)', 'NÃO (Não Conforme)', 'NA (Não Aplicável)', 'Pendente'];
       const dataValues = [stats.sim, stats.nao, stats.na, stats.pending];
       const total = stats.totalItems;
 
       chartConfig = {
-        type: 'doughnut',
+        type: 'pie',
         data: {
           labels,
           datasets: [{
@@ -998,13 +998,12 @@ document.addEventListener('DOMContentLoaded', () => {
             ],
             borderColor: '#ffffff',
             borderWidth: 2,
-            hoverOffset: 6
+            hoverOffset: 8
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          cutout: '66%',
           plugins: {
             legend: {
               position: 'right',
