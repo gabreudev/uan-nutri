@@ -980,9 +980,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       };
     } else if (state.activeChartType === 'pie' || state.activeChartType === 'donut') {
-      const labels = ['SIM (Conforme)', 'NÃO (Não Conforme)', 'NA (Não Aplicável)', 'Pendente'];
-      const dataValues = [stats.sim, stats.nao, stats.na, stats.pending];
-      const total = stats.totalItems;
+      const labels = ['Conforme (SIM)', 'Não Conforme (NÃO)'];
+      const applicable = stats.applicable || 0; // Itens válidos: SIM + NÃO
+      const dataValues = applicable > 0 ? [stats.sim, stats.nao] : [0, 0];
 
       chartConfig = {
         type: 'pie',
@@ -991,10 +991,8 @@ document.addEventListener('DOMContentLoaded', () => {
           datasets: [{
             data: dataValues,
             backgroundColor: [
-              '#059669', // Verde SIM
-              '#e11d48', // Vermelho NÃO
-              '#64748b', // Slate NA
-              '#cbd5e1'  // Cinza Pendente
+              '#059669', // Verde Esmeralda (Conforme)
+              '#e11d48'  // Vermelho Carmesim (Não Conforme)
             ],
             borderColor: '#ffffff',
             borderWidth: 2,
@@ -1012,20 +1010,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 font: { size: 12, weight: '600' },
                 padding: 12,
                 generateLabels: function(chart) {
-                  const data = chart.data;
-                  if (data.labels.length && data.datasets.length) {
-                    return data.labels.map((label, i) => {
-                      const val = data.datasets[0].data[i];
-                      const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-                      return {
-                        text: `${label}: ${val} (${pct}%)`,
-                        fillStyle: data.datasets[0].backgroundColor[i],
-                        hidden: false,
-                        index: i
-                      };
-                    });
+                  if (applicable === 0) {
+                    return [{
+                      text: 'Sem respostas válidas ainda',
+                      fillStyle: '#94a3b8',
+                      hidden: false,
+                      index: 0
+                    }];
                   }
-                  return [];
+                  const simPct = Calculator.formatPct(stats.adequacyPct);
+                  const naoPct = Calculator.formatPct(stats.inadequacyPct);
+                  return [
+                    {
+                      text: `Conforme (SIM): ${stats.sim} (${simPct})`,
+                      fillStyle: '#059669',
+                      hidden: false,
+                      index: 0
+                    },
+                    {
+                      text: `Não Conforme (NÃO): ${stats.nao} (${naoPct})`,
+                      fillStyle: '#e11d48',
+                      hidden: false,
+                      index: 1
+                    }
+                  ];
                 }
               }
             },
@@ -1035,9 +1043,11 @@ document.addEventListener('DOMContentLoaded', () => {
               padding: 10,
               callbacks: {
                 label: function(ctx) {
-                  const val = ctx.raw;
-                  const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
-                  return ` ${ctx.label}: ${val} itens (${pct}%)`;
+                  if (applicable === 0) return ' Sem dados válidos';
+                  const isSim = ctx.dataIndex === 0;
+                  const count = isSim ? stats.sim : stats.nao;
+                  const pct = isSim ? Calculator.formatPct(stats.adequacyPct) : Calculator.formatPct(stats.inadequacyPct);
+                  return ` ${ctx.label}: ${count} de ${applicable} válidos (${pct})`;
                 }
               }
             }
@@ -1143,6 +1153,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderChartInsightsFooter(stats) {
     if (!dom.chartInsightsFooter) return;
+
+    if (state.activeChartType === 'pie' || state.activeChartType === 'donut') {
+      const applicable = stats.applicable || 0;
+      const sim = stats.sim || 0;
+      const nao = stats.nao || 0;
+      const na = stats.na || 0;
+      const simPct = Calculator.formatPct(stats.adequacyPct);
+      const naoPct = Calculator.formatPct(stats.inadequacyPct);
+
+      dom.chartInsightsFooter.innerHTML = `
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-bold text-slate-800">Situação Geral de Conformidade:</span>
+          <span class="text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>${sim} Conformes (${simPct})</span>
+          <span>•</span>
+          <span class="text-rose-700 font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i>${nao} Não Conformes (${naoPct})</span>
+        </div>
+        <div class="text-[11px] text-slate-400 font-mono mt-1 sm:mt-0">
+          Base RDC 275/2002: ${applicable} válidos (${na} NAs desconsiderados da porcentagem)
+        </div>
+      `;
+      return;
+    }
 
     const blockEntries = Object.entries(stats.categoryStats || {});
     if (blockEntries.length === 0) {
