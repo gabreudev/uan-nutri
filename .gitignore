@@ -4,3 +4,8 @@
 # Arquivos de sistema
 .DS_Store
 Thumbs.db
+
+# Configurações de ambiente locais (chaves privadas)
+env.js
+.env
+.env.local

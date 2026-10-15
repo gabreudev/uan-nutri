@@ -143,6 +143,28 @@ document.addEventListener('DOMContentLoaded', () => {
     formEvalNotes: document.getElementById('formEvalNotes'),
     btnDeleteEval: document.getElementById('btnDeleteEval'),
 
+    // Google Drive AppData (Banco de Dados em Nuvem)
+    btnOpenGoogleDrive: document.getElementById('btnOpenGoogleDrive'),
+    gdriveHeaderStatusText: document.getElementById('gdriveHeaderStatusText'),
+    gdriveHeaderStatusDot: document.getElementById('gdriveHeaderStatusDot'),
+    modalGoogleDrive: document.getElementById('modalGoogleDrive'),
+    btnCloseGoogleDrive: document.getElementById('btnCloseGoogleDrive'),
+    boxDriveStatusConnected: document.getElementById('boxDriveStatusConnected'),
+    boxDriveStatusDisconnected: document.getElementById('boxDriveStatusDisconnected'),
+    driveUserAvatarContainer: document.getElementById('driveUserAvatarContainer'),
+    driveUserInitial: document.getElementById('driveUserInitial'),
+    driveUserImg: document.getElementById('driveUserImg'),
+    driveUserName: document.getElementById('driveUserName'),
+    driveUserEmail: document.getElementById('driveUserEmail'),
+    driveLastSyncLabel: document.getElementById('driveLastSyncLabel'),
+    btnDriveSyncNow: document.getElementById('btnDriveSyncNow'),
+    btnDriveDisconnect: document.getElementById('btnDriveDisconnect'),
+    btnDriveConnect: document.getElementById('btnDriveConnect'),
+    badgeDriveKeySource: document.getElementById('badgeDriveKeySource'),
+    inputDriveClientId: document.getElementById('inputDriveClientId'),
+    btnSaveDriveClientId: document.getElementById('btnSaveDriveClientId'),
+    driveKeyFeedback: document.getElementById('driveKeyFeedback'),
+
     // Modal Backup
     modalBackup: document.getElementById('modalBackup'),
     btnCloseBackup: document.getElementById('btnCloseBackup'),
@@ -177,11 +199,101 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 2800);
   }
 
+  function renderGoogleDriveStatus() {
+    if (typeof GoogleDriveSync === 'undefined' || !dom.btnOpenGoogleDrive) return;
+    const info = GoogleDriveSync.getStatus();
+
+    switch (info.status) {
+      case 'UNCONFIGURED':
+        dom.gdriveHeaderStatusText.textContent = 'Drive: Configurar';
+        dom.gdriveHeaderStatusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        break;
+      case 'DISCONNECTED':
+        dom.gdriveHeaderStatusText.textContent = 'Conectar Drive';
+        dom.gdriveHeaderStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        break;
+      case 'CONNECTING':
+        dom.gdriveHeaderStatusText.textContent = 'Conectando...';
+        dom.gdriveHeaderStatusDot.className = 'w-2 h-2 rounded-full bg-blue-500 animate-pulse';
+        break;
+      case 'SYNCING':
+        dom.gdriveHeaderStatusText.textContent = 'Sincronizando...';
+        dom.gdriveHeaderStatusDot.className = 'w-2 h-2 rounded-full bg-blue-500 animate-pulse';
+        break;
+      case 'SYNCED':
+        dom.gdriveHeaderStatusText.textContent = 'Drive Conectado';
+        dom.gdriveHeaderStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        break;
+      case 'ERROR':
+        dom.gdriveHeaderStatusText.textContent = 'Erro no Drive';
+        dom.gdriveHeaderStatusDot.className = 'w-2 h-2 rounded-full bg-rose-500';
+        break;
+      default:
+        dom.gdriveHeaderStatusText.textContent = 'Google Drive';
+        dom.gdriveHeaderStatusDot.className = 'w-2 h-2 rounded-full bg-slate-300';
+    }
+
+    refreshDriveModal();
+  }
+
+  function refreshDriveModal() {
+    if (typeof GoogleDriveSync === 'undefined' || !dom.modalGoogleDrive) return;
+    const info = GoogleDriveSync.getStatus();
+
+    // Atualiza estado de conexão
+    if (info.isConnected) {
+      dom.boxDriveStatusConnected.classList.remove('hidden');
+      dom.boxDriveStatusDisconnected.classList.add('hidden');
+
+      const user = info.user || {};
+      dom.driveUserName.textContent = user.displayName || 'Usuário Google';
+      dom.driveUserEmail.textContent = user.emailAddress || 'Conta autorizada';
+
+      if (user.photoLink) {
+        dom.driveUserImg.src = user.photoLink;
+        dom.driveUserImg.classList.remove('hidden');
+        dom.driveUserInitial.classList.add('hidden');
+      } else {
+        dom.driveUserInitial.textContent = (user.displayName || 'G').charAt(0).toUpperCase();
+        dom.driveUserInitial.classList.remove('hidden');
+        dom.driveUserImg.classList.add('hidden');
+      }
+
+      dom.driveLastSyncLabel.textContent = info.lastSync ? `Hoje às ${info.lastSync}` : 'Sincronizado';
+    } else {
+      dom.boxDriveStatusConnected.classList.add('hidden');
+      dom.boxDriveStatusDisconnected.classList.remove('hidden');
+    }
+
+    // Atualiza identificação da fonte da chave
+    if (info.clientIdSource === 'FILE') {
+      dom.badgeDriveKeySource.textContent = 'Definido em env.js';
+      dom.badgeDriveKeySource.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300';
+      if (!dom.inputDriveClientId.value) {
+        dom.inputDriveClientId.value = info.clientId;
+      }
+    } else if (info.clientIdSource === 'STORAGE') {
+      dom.badgeDriveKeySource.textContent = 'Salvo no Navegador';
+      dom.badgeDriveKeySource.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300';
+      if (!dom.inputDriveClientId.value) {
+        dom.inputDriveClientId.value = info.clientId;
+      }
+    } else {
+      dom.badgeDriveKeySource.textContent = 'Não configurado';
+      dom.badgeDriveKeySource.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300';
+    }
+  }
+
   function init() {
     renderChecklistBlockTabs();
     parseUrlHash();
     attachEventListeners();
     window.addEventListener('hashchange', parseUrlHash);
+
+    if (typeof GoogleDriveSync !== 'undefined') {
+      GoogleDriveSync.onStatusChange(renderGoogleDriveStatus);
+      renderGoogleDriveStatus();
+    }
   }
 
   let isNavigating = false;
@@ -2040,8 +2152,89 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
+    // Google Drive AppData - Event Listeners
+    if (dom.btnOpenGoogleDrive) {
+      dom.btnOpenGoogleDrive.addEventListener('click', () => {
+        dom.modalGoogleDrive.classList.remove('hidden');
+        dom.modalGoogleDrive.classList.add('flex');
+        refreshDriveModal();
+      });
+    }
+
+    if (dom.btnCloseGoogleDrive) {
+      dom.btnCloseGoogleDrive.addEventListener('click', () => {
+        dom.modalGoogleDrive.classList.add('hidden');
+        dom.modalGoogleDrive.classList.remove('flex');
+      });
+    }
+
+    if (dom.btnDriveConnect) {
+      dom.btnDriveConnect.addEventListener('click', () => {
+        if (typeof GoogleDriveSync !== 'undefined') {
+          GoogleDriveSync.signIn();
+        }
+      });
+    }
+
+    if (dom.btnDriveDisconnect) {
+      dom.btnDriveDisconnect.addEventListener('click', () => {
+        if (confirm('Deseja realmente desconectar sua conta do Google Drive? Os dados salvos localmente não serão apagados.')) {
+          if (typeof GoogleDriveSync !== 'undefined') {
+            GoogleDriveSync.signOut();
+            showToast('Desconectado do Google Drive.');
+            refreshDriveModal();
+          }
+        }
+      });
+    }
+
+    if (dom.btnDriveSyncNow) {
+      dom.btnDriveSyncNow.addEventListener('click', async () => {
+        if (typeof GoogleDriveSync !== 'undefined') {
+          const btn = dom.btnDriveSyncNow;
+          btn.disabled = true;
+          const oldHtml = btn.innerHTML;
+          btn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin text-[10px]"></i> Sincronizando...';
+          const success = await GoogleDriveSync.pullFromDrive(true);
+          btn.innerHTML = oldHtml;
+          btn.disabled = false;
+          if (success) {
+            showToast('Banco de dados sincronizado com o Google Drive!');
+            switchView(state.currentView);
+          } else {
+            showToast('Erro ao sincronizar. Verifique a conexão.');
+          }
+        }
+      });
+    }
+
+    if (dom.btnSaveDriveClientId) {
+      dom.btnSaveDriveClientId.addEventListener('click', () => {
+        const val = (dom.inputDriveClientId.value || '').trim();
+        if (!val) {
+          alert('Por favor, informe um Google Client ID válido.');
+          return;
+        }
+        if (typeof GoogleDriveSync !== 'undefined') {
+          GoogleDriveSync.setClientId(val);
+          dom.driveKeyFeedback.textContent = 'Chave salva com sucesso!';
+          dom.driveKeyFeedback.classList.remove('hidden');
+          setTimeout(() => dom.driveKeyFeedback.classList.add('hidden'), 3500);
+          showToast('Google Client ID salvo no navegador!');
+          refreshDriveModal();
+        }
+      });
+    }
+
+    window.addEventListener('bpf-data-updated', (e) => {
+      switchView(state.currentView);
+      if (e.detail?.interactive) {
+        showToast('Dados atualizados a partir do Google Drive!');
+      }
+    });
+
     // Fechar modais ao clicar no fundo escuro (backdrop)
-    [dom.modalPlaceForm, dom.modalEvalForm, dom.modalBackup].forEach(modal => {
+    [dom.modalPlaceForm, dom.modalEvalForm, dom.modalBackup, dom.modalGoogleDrive].forEach(modal => {
       if (modal) {
         modal.addEventListener('click', (e) => {
           if (e.target === modal) {

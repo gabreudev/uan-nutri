@@ -48,12 +48,16 @@ const Store = {
   },
 
   /**
-   * Salva a lista de lugares no localStorage
+   * Salva a lista de lugares no localStorage e sincroniza com o Drive se conectado
    * @param {Array} places 
+   * @param {boolean} [shouldSyncDrive=true]
    */
-  savePlaces(places) {
+  savePlaces(places, shouldSyncDrive = true) {
     try {
       localStorage.setItem(STORAGE_PLACES_KEY, JSON.stringify(places));
+      if (shouldSyncDrive && typeof GoogleDriveSync !== 'undefined' && GoogleDriveSync.isConnected()) {
+        GoogleDriveSync.schedulePush();
+      }
     } catch (e) {
       console.error('Erro ao salvar lugares no localStorage:', e);
     }
@@ -395,9 +399,49 @@ const Store = {
     const data = {
       version: '2.0-hierarchical',
       exportedAt: new Date().toISOString(),
-      places: this.getPlaces()
+      places: this.getPlaces(),
+      activePlaceId: this.getActivePlaceId(),
+      activeEvalId: this.getActiveEvalId()
     };
     return JSON.stringify(data, null, 2);
+  },
+
+  /**
+   * Aplica dados remotos recebidos do Google Drive AppData
+   * @param {Object} remoteData 
+   * @returns {boolean}
+   */
+  applyRemoteData(remoteData) {
+    try {
+      if (!remoteData) return false;
+      let incomingPlaces = null;
+
+      if (remoteData.places && Array.isArray(remoteData.places)) {
+        incomingPlaces = remoteData.places;
+      } else if (Array.isArray(remoteData)) {
+        if (remoteData[0]?.evaluations) {
+          incomingPlaces = remoteData;
+        } else {
+          incomingPlaces = this.migrateLegacyData(remoteData);
+        }
+      }
+
+      if (!incomingPlaces || incomingPlaces.length === 0) return false;
+
+      // Persiste no localStorage local SEM disparar novo push em loop
+      this.savePlaces(incomingPlaces, false);
+
+      if (remoteData.activePlaceId && this.getPlace(remoteData.activePlaceId)) {
+        this.setActivePlaceId(remoteData.activePlaceId);
+      }
+      if (remoteData.activeEvalId) {
+        this.setActiveEvalId(remoteData.activeEvalId);
+      }
+      return true;
+    } catch (e) {
+      console.error('Erro ao aplicar dados do Google Drive:', e);
+      return false;
+    }
   },
 
   /**

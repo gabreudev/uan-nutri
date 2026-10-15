@@ -77,3 +77,76 @@ O sistema reflete essa realidade em 4 níveis integrados:
   - **Benchmarking entre locais diferentes** (ex: *UAN A vs. UAN B*).
   - Qualquer combinação arbitrária de avaliações selecionadas via caixas de seleção.
 - Botões de **Copiar Tabela** (TSV compatível com Word/Excel) e **Exportar CSV**.
+
+---
+
+## ☁️ Banco de Dados em Nuvem: Google Drive AppData (Serverless & Privado)
+
+A aplicação **não depende de nenhum banco de dados tradicional (SQL/NoSQL) ou servidor backend pago**. O banco de dados da aplicação é a pasta oculta de dados de aplicativo (**`appDataFolder`**) do próprio Google Drive do usuário.
+
+```
+[ Usuário / Auditor ] ──► [ BPF Digital (Web App) ]
+                                 │
+                                 ├── Cache Local (localStorage instantâneo 0ms)
+                                 │
+                                 ▼ (OAuth 2.0 / GIS)
+               [ Google Drive do Usuário ]
+                         │
+                         └── [ appDataFolder (Pasta Oculta Privada) ]
+                                   └── bpf_uan_database.json
+```
+
+### Principais Vantagens:
+- **Zero Custo de Servidor**: Hospedagem estática (GitHub Pages / Vercel / Localhost) sem backend.
+- **Sigilo e Privacidade Absoluta**: O escopo utilizado é exclusivo (`drive.appdata`). O aplicativo **NÃO** tem acesso aos seus arquivos pessoais do Drive e nenhuma outra pessoa ou aplicativo acessa os seus dados de auditoria.
+- **Sincronização Automática**: Edições, novas UANs ou respostas no checklist salvam localmente com latência zero e sincronizam automaticamente na nuvem com *debounce* inteligente.
+- **Multi-dispositivo**: Abra o sistema em qualquer computador ou tablet, conecte ao seu Google Drive e acesse seus estabelecimentos e relatórios imediatamente.
+
+---
+
+## 🛠️ Como Configurar a Chave do Google Drive (`env`)
+
+Para ativar o banco de dados do Google Drive na sua cópia do projeto, você só precisa de um **Google Client ID**.
+
+### Método 1: Via Arquivo de Ambiente (`env.js`) — Recomendado para Desenvolvimento
+1. Duplique o arquivo modelo `env.example.js` criando o arquivo `env.js`:
+   ```bash
+   cp env.example.js env.js
+   ```
+2. Abra `env.js` e insira o seu Client ID:
+   ```javascript
+   window.APP_ENV = {
+     GOOGLE_CLIENT_ID: "SEU_CLIENT_ID.apps.googleusercontent.com",
+     GOOGLE_API_KEY: ""
+   };
+   ```
+*(O arquivo `env.js` está no `.gitignore` para nunca expor suas credenciais).*
+
+### Método 2: Diretamente na Interface Web
+Se você estiver utilizando a versão online (ex: GitHub Pages) e não quiser editar código:
+1. Abra o sistema e clique no botão **Google Drive** no topo superior direito.
+2. Cole o seu **Google Client ID** no campo correspondente e clique em **Salvar**.
+
+---
+
+## 🔑 Passo a Passo: Como Gerar o Google Client ID no Google Cloud Console
+
+1. Acesse o **[Google Cloud Console](https://console.cloud.google.com/)** e faça login com sua conta Google.
+2. Crie um novo projeto (exemplo: `BPF Digital UAN`).
+3. No menu lateral, acesse **APIs e Serviços > Biblioteca**.
+   - Pesquise por **Google Drive API** e clique em **Ativar**.
+4. Acesse **APIs e Serviços > Tela de permissão OAuth**:
+   - Selecione **Usuários externos** e clique em *Criar*.
+   - Preencha o nome do app (`BPF Digital`) e seu e-mail de suporte.
+   - Em **Escopos**, adicione o escopo: `https://www.googleapis.com/auth/drive.appdata`.
+   - Em **Usuários de teste**, adicione o seu e-mail do Google.
+5. Acesse **APIs e Serviços > Credenciais**:
+   - Clique em **+ Criar Credenciais > ID do cliente OAuth**.
+   - Tipo de aplicativo: **Aplicativo da Web**.
+   - Em **Origens JavaScript autorizadas**, adicione as URLs onde você usará a aplicação:
+     - `http://localhost:3000`
+     - `http://localhost:8080`
+     - `http://127.0.0.1:5500`
+     - `https://seu-usuario.github.io` *(se for publicar no GitHub Pages)*
+   - Clique em **Criar** e copie o **ID do cliente** gerado (formato `xxxxx-xxxx.apps.googleusercontent.com`).
+6. Cole o ID no seu `env.js` ou na janela de configuração do Google Drive na aplicação!
