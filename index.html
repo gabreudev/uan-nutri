@@ -793,10 +793,11 @@
             <ol class="list-decimal pl-4 space-y-1.5">
               <li>Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" class="text-blue-600 font-semibold underline">Google Cloud Console</a> e crie um projeto (ex: <em>BPF Digital UAN</em>).</li>
               <li>Vá em <strong>APIs e Serviços &gt; Biblioteca</strong> e ative a <strong>Google Drive API</strong>.</li>
-              <li>Em <strong>Tela de Consentimento OAuth</strong>, selecione <em>Usuários Externos</em> e adicione o escopo <code>https://www.googleapis.com/auth/drive.appdata</code>.</li>
-              <li>Em <strong>Credenciais</strong>, clique em <strong>Criar Credenciais &gt; ID do cliente OAuth</strong> (Tipo: <em>Aplicativo da Web</em>).</li>
-              <li>Em <strong>Origens JavaScript autorizadas</strong>, adicione as URLs onde sua aplicação roda (ex: <code>http://localhost:3000</code>, <code>http://127.0.0.1:5500</code> ou seu GitHub Pages).</li>
-              <li>Copie o <strong>ID do Cliente</strong> gerado e cole no arquivo <code>env.js</code> (copiado de <code>env.example.js</code>) ou no campo acima!</li>
+              <li>Em <strong>Google Auth Platform (Tela OAuth)</strong>, selecione <em>Usuários Externos</em>, preencha os dados e em <strong>Audience &gt; Test users</strong> adicione seu e-mail do Google (ou clique em <em>Publish app</em>).</li>
+              <li>Em <strong>Clients / Credenciais</strong>, clique em <strong>Criar Credenciais &gt; ID do cliente OAuth</strong> (Tipo: <em>Aplicativo da Web</em>).</li>
+              <li>Em <strong>Origens JavaScript autorizadas</strong>, adicione as URLs onde sua aplicação roda (ex: <code>http://localhost:3000</code> e seu GitHub Pages).</li>
+              <li>Copie o <strong>ID do Cliente</strong> gerado e cole no arquivo <code>env.js</code> ou no campo acima!</li>
+              <li>Ao conectar, se aparecer o aviso <em>"Google hasn't verified this app"</em>, clique em <strong>Continue</strong> à esquerda para prosseguir normalmente.</li>
             </ol>
             <div class="p-2 bg-amber-50 rounded border border-amber-200 text-amber-900 text-[10px] mt-2">
               <strong>Privacidade do AppData:</strong> A pasta de dados de aplicativo do Google Drive é oculta e restrita exclusivamente a esta aplicação. Suas avaliações e dados de UAN permanecem 100% privados no seu próprio Google Drive.
