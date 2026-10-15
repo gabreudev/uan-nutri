@@ -216,8 +216,8 @@ const GoogleDriveSync = (function() {
 
     if (tokenClient) {
       setStatus(STATUS.CONNECTING, 'Aguardando autorização da conta Google...');
-      // 'consent' força a exibição da tela de consentimento se ainda não autorizou
-      tokenClient.requestAccessToken({ prompt: 'consent' });
+      // 'select_account consent' força a exibição da lista de seleção de contas do Google
+      tokenClient.requestAccessToken({ prompt: 'select_account consent' });
     } else {
       alert('A biblioteca de autenticação do Google ainda está carregando. Tente novamente em alguns segundos.');
     }
